@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 
@@ -171,6 +172,37 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     )
 
 
+async def _show_leady_pitch(chat_id: int, bot) -> None:
+    pitch = (
+        "<b>🤔 Зачем вам Leady?</b>\n\n"
+        "Вы ведёте бизнес в Telegram: принимаете заказы, общаетесь с клиентами, "
+        "согласовываете с командой. Но всё разбросано по чатам — "
+        "клиенты теряются, сделки забываются.\n\n"
+        "<b>Leady — это CRM внутри Telegram.</b>\n"
+        "Все сделки, клиенты и задачи в одном месте, без веб-интерфейсов и сложных настроек."
+    )
+    value_props = (
+        "<b>🔥 Что вы получаете:</b>\n\n"
+        "• <b>Сделки</b> — ведите клиентов по воронке: заявка → переговоры → оплата\n"
+        "• <b>Клиенты</b> — вся история общения и покупок в одном месте\n"
+        "• <b>Задачи</b> — ставьте задачи сотрудникам и контролируйте сроки\n"
+        "• <b>Статистика</b> — выручка, конверсия, средний чек (в PRO)\n\n"
+        "Всё это — в вашем собственном Telegram-боте. Клиенты даже не узнают, "
+        "что вы используете CRM."
+    )
+    how_it_works = (
+        "<b>⚡ Как это работает:</b>\n\n"
+        "1️⃣ Выбираете тариф\n"
+        "2️⃣ Создаёте своего бота за 1 минуту\n"
+        "3️⃣ Ваши сотрудники заходят в него и работают\n"
+        "4️⃣ Клиенты оставляют заявки — вы их не теряете\n\n"
+        "<i>Никаких веб-сайтов, никаких установок. Чистый Telegram.</i>"
+    )
+    for msg in (pitch, value_props, how_it_works):
+        await asyncio.sleep(0.8)
+        await bot.send_message(chat_id=chat_id, text=msg, parse_mode="HTML")
+
+
 @router.callback_query(F.data == "consent_accept")
 async def consent_accept(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
@@ -186,6 +218,7 @@ async def consent_accept(callback: CallbackQuery, state: FSMContext) -> None:
         logger.exception("Failed to persist consent")
 
     await callback.message.edit_text("✅ <b>Согласие принято!</b>")
+    await _show_leady_pitch(callback.message.chat.id, callback.bot)
     await state.set_state(OnboardingState.waiting_tariff)
     await send_rich(
         callback.message.chat.id,
