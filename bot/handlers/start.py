@@ -341,8 +341,7 @@ async def onboarding_company_name(message: Message, state: FSMContext) -> None:
         "🤖 Теперь создадим вашего персонального бота.\n"
         "Как назвать бота? Это имя будут видеть ваши клиенты.\n\n"
         "Например: <b>Ромашка CRM</b> или <b>Автосервис Профи</b>\n\n"
-        "Введите название бота:",
-        reply_markup=back_to_period_keyboard(),
+        "Введите название бота:"
     )
     await state.update_data(prev_msg_id=status_msg.message_id)
 
