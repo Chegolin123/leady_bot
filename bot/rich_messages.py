@@ -81,7 +81,7 @@ def pre(text: str) -> str:
     return f"<pre><code>{h(text)}</code></pre>"
 
 
-async def send_rich(chat_id: int, rich_html: str, reply_markup: dict | None = None) -> bool:
+async def send_rich(chat_id: int, rich_html: str, reply_markup: dict | None = None) -> int | None:
     url = f"https://api.telegram.org/bot{settings.BOT_TOKEN}/sendRichMessage"
     payload: dict = {
         "chat_id": chat_id,
@@ -94,8 +94,8 @@ async def send_rich(chat_id: int, rich_html: str, reply_markup: dict | None = No
             resp = await client.post(url, json=payload)
             data = resp.json()
             if data.get("ok"):
-                return True
+                return data["result"]["message_id"]
             logger.warning(f"sendRichMessage failed: {data.get('description')}")
     except Exception:
         logger.exception("sendRichMessage error")
-    return False
+    return None
