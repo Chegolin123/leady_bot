@@ -305,63 +305,46 @@ async def onboarding_company_name(message: Message, state: FSMContext) -> None:
     prev_msg_id = data.get("prev_msg_id")
     tariff = data.get("tariff", "base")
 
+    await _del_msg(message.bot, message.chat.id, prev_msg_id)
+
     if len(name) < 2 or len(name) > 100:
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text="⚠️ Название должно быть от 2 до 100 символов."
-            )
+        msg = await message.answer("⚠️ Название должно быть от 2 до 100 символов.")
+        await state.update_data(prev_msg_id=msg.message_id)
         return
 
-    if prev_msg_id:
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id, message_id=prev_msg_id,
-            text="⏳ Создаём компанию..."
-        )
+    status_msg = await message.answer("⏳ Создаём компанию...")
     try:
         result = await api.create_company(name=name, tariff=tariff)
         company_id = result.get("id", "")
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 409:
-            if prev_msg_id:
-                await message.bot.edit_message_text(
-                    chat_id=message.chat.id, message_id=prev_msg_id,
-                    text="⚠️ Компания с таким названием уже существует.\nВведите другое название:"
-                )
+            await status_msg.edit_text(
+                "⚠️ Компания с таким названием уже существует.\nВведите другое название:"
+            )
+            await state.update_data(prev_msg_id=status_msg.message_id)
             return
         logger.exception("Failed to create company")
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text="⚠️ Не удалось создать компанию."
-            )
+        await status_msg.edit_text("⚠️ Не удалось создать компанию.")
         await state.clear()
         return
     except Exception:
         logger.exception("Failed to create company")
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text="⚠️ Не удалось создать компанию."
-            )
+        await status_msg.edit_text("⚠️ Не удалось создать компанию.")
         await state.clear()
         return
 
     await state.update_data(company_id=company_id, company_name=name, tariff=tariff)
     await state.set_state(OnboardingState.waiting_bot_name)
-    if prev_msg_id:
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id, message_id=prev_msg_id,
-            text=(
-                f"✅ <b>Компания «{name}» создана!</b>\n"
-                f"Тариф: <b>{tariff.upper()}</b>\n\n"
-                "🤖 Теперь создадим вашего персонального бота.\n"
-                "Как назвать бота? Это имя будут видеть ваши клиенты.\n\n"
-                "Например: <b>Ромашка CRM</b> или <b>Автосервис Профи</b>\n\n"
-                "Введите название бота:"
-            ),
-            reply_markup=back_to_period_keyboard(),
-        )
+    await status_msg.edit_text(
+        f"✅ <b>Компания «{name}» создана!</b>\n"
+        f"Тариф: <b>{tariff.upper()}</b>\n\n"
+        "🤖 Теперь создадим вашего персонального бота.\n"
+        "Как назвать бота? Это имя будут видеть ваши клиенты.\n\n"
+        "Например: <b>Ромашка CRM</b> или <b>Автосервис Профи</b>\n\n"
+        "Введите название бота:",
+        reply_markup=back_to_period_keyboard(),
+    )
+    await state.update_data(prev_msg_id=status_msg.message_id)
 
 
 @router.message(StateFilter(OnboardingState.waiting_bot_name), F.text)
@@ -370,30 +353,26 @@ async def onboarding_bot_name(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     prev_msg_id = data.get("prev_msg_id")
 
+    await _del_msg(message.bot, message.chat.id, prev_msg_id)
+
     if len(name) < 2 or len(name) > 100:
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text="⚠️ Название должно быть от 2 до 100 символов."
-            )
+        msg = await message.answer("⚠️ Название должно быть от 2 до 100 символов.")
+        await state.update_data(prev_msg_id=msg.message_id)
         return
 
     await state.update_data(bot_name=name)
     await state.set_state(OnboardingState.waiting_bot_username)
-    if prev_msg_id:
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id, message_id=prev_msg_id,
-            text=(
-                "✏️ <b>Отлично! Теперь придумайте короткое имя для ссылки.</b>\n\n"
-                "Ваш бот будет доступен по ссылке:\n"
-                "<code>https://t.me/имя_bot</code>\n\n"
-                "📌 <b>Требования:</b>\n"
-                "• Только латиница (a-z, 0-9, _)\n"
-                "• Заканчивается на <code>_bot</code>\n"
-                "• 5-32 символа\n\n"
-                "Например: <code>romashka_bot</code> или <code>avtoservis_bot</code>"
-            )
-        )
+    msg = await message.answer(
+        "✏️ <b>Отлично! Теперь придумайте короткое имя для ссылки.</b>\n\n"
+        "Ваш бот будет доступен по ссылке:\n"
+        "<code>https://t.me/имя_bot</code>\n\n"
+        "📌 <b>Требования:</b>\n"
+        "• Только латиница (a-z, 0-9, _)\n"
+        "• Заканчивается на <code>_bot</code>\n"
+        "• 5-32 символа\n\n"
+        "Например: <code>romashka_bot</code> или <code>avtoservis_bot</code>"
+    )
+    await state.update_data(prev_msg_id=msg.message_id)
 
 
 @router.message(StateFilter(OnboardingState.waiting_bot_username), F.text)
@@ -403,39 +382,31 @@ async def onboarding_bot_username(message: Message, state: FSMContext) -> None:
     prev_msg_id = data.get("prev_msg_id")
     bot_name = data.get("bot_name", "")
 
+    await _del_msg(message.bot, message.chat.id, prev_msg_id)
+
     if not USERNAME_RE.match(username):
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text="⚠️ Только латиница, цифры и _. От 5 до 32 символов.\nНапример: <code>romashka_bot</code>"
-            )
+        msg = await message.answer(
+            "⚠️ Только латиница, цифры и _. От 5 до 32 символов.\n"
+            "Например: <code>romashka_bot</code>"
+        )
+        await state.update_data(prev_msg_id=msg.message_id)
         return
 
     if not username.endswith("_bot"):
         suggestion = username.rstrip("bot").rstrip("_") + "_bot"
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text=f"⚠️ Имя должно заканчиваться на <code>_bot</code>.\nПопробуйте: <code>{suggestion}</code>"
-            )
+        msg = await message.answer(
+            "⚠️ Имя должно заканчиваться на <code>_bot</code>.\n"
+            f"Попробуйте: <code>{suggestion}</code>"
+        )
+        await state.update_data(prev_msg_id=msg.message_id)
         return
 
     if username in STOP_WORDS or username.rstrip("bot").rstrip("_") in STOP_WORDS:
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text="⚠️ Это имя зарезервировано. Придумайте другое."
-            )
+        msg = await message.answer("⚠️ Это имя зарезервировано. Придумайте другое.")
+        await state.update_data(prev_msg_id=msg.message_id)
         return
 
-    async def _edit(text: str, reply_markup=None) -> None:
-        if prev_msg_id:
-            kwargs = {"chat_id": message.chat.id, "message_id": prev_msg_id, "text": text}
-            if reply_markup:
-                kwargs["reply_markup"] = reply_markup
-            await message.bot.edit_message_text(**kwargs)
-
-    await _edit("⏳ Проверяем доступность имени...")
+    status_msg = await message.answer("⏳ Проверяем доступность имени...")
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -443,18 +414,21 @@ async def onboarding_bot_username(message: Message, state: FSMContext) -> None:
             resp = await client.get(check_url)
             resp_data = resp.json()
             if resp_data.get("ok"):
-                await _edit(f"⚠️ Имя <b>@{username}</b> уже занято.\nПридумайте другое:")
+                await status_msg.edit_text(
+                    f"⚠️ Имя <b>@{username}</b> уже занято.\nПридумайте другое:"
+                )
+                await state.update_data(prev_msg_id=status_msg.message_id)
                 return
     except Exception:
         pass
 
     await state.update_data(bot_username=username)
 
-    await _edit("⏳ Пытаемся создать бота автоматически...")
+    await status_msg.edit_text("⏳ Пытаемся создать бота автоматически...")
     try:
         result = await factory_create_bot(bot_name, username)
         if result.get("ok") and result.get("token"):
-            await _activate_bot(message, state, prev_msg_id, result["token"], username)
+            await _activate_bot(message, state, status_msg, result["token"], username)
             return
     except Exception:
         logger.exception("Factory create failed")
@@ -463,7 +437,7 @@ async def onboarding_bot_username(message: Message, state: FSMContext) -> None:
     kb = InlineKeyboardMarkup(
         inline_keyboard=[[{"text": "🤖 Открыть @BotFather", "url": "https://t.me/BotFather"}]]
     )
-    await _edit(
+    await status_msg.edit_text(
         f"✅ Имя <b>@{username}</b> свободно!\n\n"
         "🤖 <b>Автосоздание пока недоступно, используем BotFather:</b>\n\n"
         f"1️⃣ Отправьте: <code>/newbot</code>\n"
@@ -473,6 +447,7 @@ async def onboarding_bot_username(message: Message, state: FSMContext) -> None:
         "<i>Каждую строку отправляйте по одной</i>",
         reply_markup=kb,
     )
+    await state.update_data(prev_msg_id=status_msg.message_id)
 
 
 @router.message(StateFilter(OnboardingState.waiting_bot_token), F.text)
@@ -482,50 +457,38 @@ async def onboarding_bot_token(message: Message, state: FSMContext) -> None:
     bot_username = data.get("bot_username", "")
     prev_msg_id = data.get("prev_msg_id")
 
+    await _del_msg(message.bot, message.chat.id, prev_msg_id)
+
     if ":" not in token or len(token) < 20:
-        if prev_msg_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id, message_id=prev_msg_id,
-                text=(
-                    "⚠️ Это не похоже на токен.\n"
-                    "Токен: <code>123456:ABC-DEF1234gh</code>\n"
-                    "Скопируйте из @BotFather и вставьте:"
-                )
-            )
+        msg = await message.answer(
+            "⚠️ Это не похоже на токен.\n"
+            "Токен: <code>123456:ABC-DEF1234gh</code>\n"
+            "Скопируйте из @BotFather и вставьте:"
+        )
+        await state.update_data(prev_msg_id=msg.message_id)
         return
 
-    if prev_msg_id:
-        await message.bot.edit_message_text(
-            chat_id=message.chat.id, message_id=prev_msg_id,
-            text="⏳ Проверяю токен..."
-        )
-    await _activate_bot(message, state, prev_msg_id, token, bot_username)
+    status_msg = await message.answer("⏳ Проверяю токен...")
+    await _activate_bot(message, state, status_msg, token, bot_username)
 
 
 async def _activate_bot(
     event: Message,
     state: FSMContext,
-    msg_id: int | None,
+    status_msg: Message,
     token: str,
     bot_username: str,
 ) -> None:
-    async def _edit(text: str, reply_markup=None) -> None:
-        if msg_id:
-            kwargs = {"chat_id": event.chat.id, "message_id": msg_id, "text": text, "parse_mode": "HTML"}
-            if reply_markup:
-                kwargs["reply_markup"] = reply_markup
-            await event.bot.edit_message_text(**kwargs)
-
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"https://api.telegram.org/bot{token}/getMe")
             if resp.status_code != 200 or not resp.json().get("ok"):
                 raise ValueError("Invalid token")
     except Exception:
-        await _edit("⚠️ <b>Токен недействителен.</b>\nПопробуйте снова:")
+        await status_msg.edit_text("⚠️ <b>Токен недействителен.</b>\nПопробуйте снова:")
         return
 
-    await _edit("⏳ Активирую бота...")
+    await status_msg.edit_text("⏳ Активирую бота...")
 
     data = await state.get_data()
     company_id = data.get("company_id", "")
@@ -535,13 +498,13 @@ async def _activate_bot(
         await api.admin_add_bot(company_id=company_id, bot_token=token)
     except Exception:
         logger.exception("Failed to activate bot")
-        await _edit("⚠️ Не удалось активировать. Попробуйте позже или /start.")
+        await status_msg.edit_text("⚠️ Не удалось активировать. Попробуйте позже или /start.")
         await state.clear()
         return
 
     await state.clear()
     first_name = event.from_user.first_name or ""
-    await _edit(
+    await status_msg.edit_text(
         f"🎉 <b>Готово, {first_name}!</b>\n\n"
         f"🏢 Компания: <b>{company_name}</b>\n"
         f"🤖 Ваш бот: <a href='https://t.me/{bot_username}'>@{bot_username}</a>\n\n"
