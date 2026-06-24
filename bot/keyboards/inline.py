@@ -90,6 +90,12 @@ def onboarding_period_keyboard(tariff: str) -> InlineKeyboardMarkup:
 # SHARED
 # ══════════════════════════════════════════════════════════════════════
 
+def back_to_period_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[_btn("\u2190 Назад к выбору срока", "back_to_period")]]
+    )
+
+
 def back_to_menu_btn() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[[_btn("\u2190 Назад", "back_to_menu")]]

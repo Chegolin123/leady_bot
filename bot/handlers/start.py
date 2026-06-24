@@ -14,6 +14,7 @@ from bot.auth_store import get_auth
 from bot.fsm import OnboardingState
 from bot.keyboards.inline import (
     admin_menu,
+    back_to_period_keyboard,
     client_menu,
     consent_keyboard,
     manager_menu,
@@ -264,9 +265,23 @@ async def onboarding_period(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(OnboardingState.waiting_company_name)
     msg = await callback.message.edit_text(
         f"✅ Тариф: <b>{tariff.upper()}</b> | {period_label} | <b>{amount} ₽</b>\n\n"
-        "🏢 Введите название вашей компании (от 2 до 100 символов):"
+        "🏢 Введите название вашей компании (от 2 до 100 символов):",
+        reply_markup=back_to_period_keyboard(),
     )
     await state.update_data(prev_msg_id=msg.message_id)
+
+
+@router.callback_query(StateFilter(OnboardingState.waiting_company_name), F.data == "back_to_period")
+async def onboarding_back_to_period(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    data = await state.get_data()
+    tariff = data.get("tariff", "base")
+    await state.set_state(OnboardingState.waiting_period)
+    await callback.message.edit_text(
+        f"✅ Тариф: <b>{tariff.upper()}</b>\n\n"
+        "📅 <b>Выберите срок:</b>",
+        reply_markup=onboarding_period_keyboard(tariff),
+    )
 
 
 @router.callback_query(StateFilter(OnboardingState.waiting_period), F.data == "back_to_tariff")
@@ -344,7 +359,8 @@ async def onboarding_company_name(message: Message, state: FSMContext) -> None:
                 "Как назвать бота? Это имя будут видеть ваши клиенты.\n\n"
                 "Например: <b>Ромашка CRM</b> или <b>Автосервис Профи</b>\n\n"
                 "Введите название бота:"
-            )
+            ),
+            reply_markup=back_to_period_keyboard(),
         )
 
 
