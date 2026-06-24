@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: leady-db
+    mem_limit: 256M
+    environment:
+      POSTGRES_DB: leady
+      POSTGRES_USER: leady
+      POSTGRES_PASSWORD: leady_dev_pass_2026
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leady"]
+      interval: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: leady-redis-prod
+    mem_limit: 64M
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: leady-api-prod
+    mem_limit: 512M
+    environment:
+      DATABASE_URL: postgresql+asyncpg://leady:leady_dev_pass_2026@postgres:5432/leady
+      REDIS_URL: redis://redis:6379
+      SERVICE_API_TOKEN: leady_dev_service_token_2026
+      AES_ENCRYPTION_KEY: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
+      YOOKASSA_SHOP_ID: dev
+      YOOKASSA_SECRET: dev
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head;
+             uvicorn api.main:app --host 0.0.0.0 --port 8000"
+    restart: always
+
+  bot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.bot
+    container_name: leady-bot-prod
+    mem_limit: 256M
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      DATABASE_URL: postgresql+asyncpg://leady:leady_dev_pass_2026@postgres:5432/leady
+      API_BASE_URL: http://api:8000
+      REDIS_URL: redis://redis:6379
+      SERVICE_API_TOKEN: leady_dev_service_token_2026
+      AES_ENCRYPTION_KEY: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
+      PROXY_LIST: ""
+    command: python -m bot.main
+    depends_on:
+      - api
+      - redis
+    restart: always
+
+volumes:
+  pgdata:

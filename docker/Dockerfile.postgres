@@ -1,0 +1,8 @@
+FROM postgres:16
+
+RUN apt-get update && apt-get install -y postgresql-16-cron && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY infra/postgres/init.sql /docker-entrypoint-initdb.d/01_init.sql
+COPY infra/postgres/audit_triggers.sql /docker-entrypoint-initdb.d/02_audit.sql
+COPY infra/postgres/retention_jobs.sql /docker-entrypoint-initdb.d/03_retention.sql

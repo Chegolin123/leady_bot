@@ -1,0 +1,88 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="card">
+    <h2>{{ company.name }}</h2>
+    <p>
+        <span class="badge {% if company.tariff == 'pro' %}badge-pro{% else %}badge-base{% endif %}">
+            {{ company.tariff.upper() }}
+        </span>
+        Создана: {{ company.created_at.strftime('%d.%m.%Y %H:%M') }}
+        {% if company.deleted_at %}
+            <span class="badge badge-inactive">Удалена</span>
+        {% endif %}
+    </p>
+</div>
+
+<div class="stats" style="margin-bottom: 16px;">
+    <div class="stat-card">
+        <div class="num">{{ users|length }}</div>
+        <div class="label">Менеджеров</div>
+    </div>
+    <div class="stat-card">
+        <div class="num">{{ deals_count }}</div>
+        <div class="label">Сделок</div>
+    </div>
+    <div class="stat-card">
+        <div class="num">{{ clients_count }}</div>
+        <div class="label">Клиентов</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Менеджеры</h3>
+    {% if users %}
+    <table>
+        <thead>
+            <tr><th>Telegram ID</th><th>Имя</th><th>Username</th><th>Роль</th><th>Согласие ПД</th></tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.telegram_id }}</td>
+                <td>{{ u.first_name or '—' }} {{ u.last_name or '' }}</td>
+                <td>@{{ u.username or '—' }}</td>
+                <td>{{ u.role }}</td>
+                <td>{{ '✅' if u.pd_consent else '❌' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Нет менеджеров.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>История лицензий</h3>
+    {% if licenses %}
+    <table>
+        <thead>
+            <tr><th>Тариф</th><th>Статус</th><th>Сумма</th><th>Начало</th><th>Конец</th></tr>
+        </thead>
+        <tbody>
+            {% for l in licenses %}
+            <tr>
+                <td>{{ l.tariff.upper() }}</td>
+                <td><span class="badge {% if l.is_active %}badge-active{% else %}badge-inactive{% endif %}">{{ 'Активна' if l.is_active else 'Неактивна' }}</span></td>
+                <td>{{ l.amount }} ₽</td>
+                <td>{{ l.started_at.strftime('%d.%m.%Y') }}</td>
+                <td>{{ l.expires_at.strftime('%d.%m.%Y') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Нет лицензий.</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 16px;">
+    <form method="POST" action="/admin/companies/{{ company.id }}/activate?tariff={{ company.tariff }}" style="display:inline">
+        <button class="btn btn-green">Активировать лицензию (30 дн)</button>
+    </form>
+</div>
+
+<p style="margin-top: 16px;">
+    <a href="/admin/companies">← Назад к списку</a>
+</p>
+{% endblock %}
