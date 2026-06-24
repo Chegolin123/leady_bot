@@ -91,10 +91,6 @@ def _tariff_table() -> str:
     )
 
 
-def _tariff_comparison_html() -> str:
-    return doc(heading(2, "💳 Сравнение тарифов"), _tariff_table())
-
-
 def _pitch_tariff_html() -> str:
     return doc(
         heading(1, "🚀 Leady — CRM в Telegram"),
@@ -275,7 +271,7 @@ async def onboarding_back_to_tariff(callback: CallbackQuery, state: FSMContext) 
     await state.set_state(OnboardingState.waiting_tariff)
     await send_rich(
         callback.message.chat.id,
-        _tariff_comparison_html(),
+        _pitch_tariff_html(),
         reply_markup=_keyboard_to_dict(onboarding_tariff_keyboard()),
     )
 
