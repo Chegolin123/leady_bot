@@ -161,10 +161,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         return
 
     await state.set_state(OnboardingState.waiting_tariff)
-    await message.answer(
-        "Согласие уже принято. Продолжим настройку вашего доступа.\n\n"
-        "Ниже — сравнение тарифов.",
-    )
+    await _show_leady_pitch(message.chat.id, message.bot)
     await send_rich(
         message.chat.id,
         _tariff_comparison_html(),
