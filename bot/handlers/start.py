@@ -274,6 +274,7 @@ async def onboarding_back_to_tariff(callback: CallbackQuery, state: FSMContext) 
         _pitch_tariff_html(),
         reply_markup=_keyboard_to_dict(onboarding_tariff_keyboard()),
     )
+    await _del_msg(callback.bot, callback.message.chat.id, callback.message.message_id)
 
 
 @router.message(StateFilter(OnboardingState.waiting_company_name), F.text)
