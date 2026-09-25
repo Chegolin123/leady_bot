@@ -23,3 +23,6 @@ Thumbs.db
 
 # Docker botfactory session
 botfactory.session
+
+# Local memory of ZCode
+.zcode/
